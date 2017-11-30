@@ -14,6 +14,9 @@ import java.util.Properties;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+
 import org.IS2.Barracus.ChapuzaProcesado;
 import org.IS2.Nikola.ExcepcionEnTrabajo;
 import org.IS2.Nikola.UtilidadesTexto;
@@ -21,14 +24,14 @@ import org.IS2.Tesla.IS2_Tesla_raw_task_thrd;
 import org.apache.commons.io.filefilter.WildcardFileFilter;
 
 public class ProcesaTexto {
-	private static final String LISTA_FICHEROS_NECESARIOS = "lista.ficheros.necesarios";
-	private static final String CARPETA_ORIGEN = "lista.carpeta.origen";
+	private static final String FICHERO_ENTRADA = "fichero.entrada";
+	private static final String CARPETA_ENTRADA = "carpeta.entrada";
 	private static final String FICHERO_SALIDA = "fichero.salida";
-	private static final String MASCARA_FICHERO_SALIDA = "mascara.fichero.salida";
+	private static final String CARPETA_SALIDA = "carpeta.salida";
 	private Properties propiedades;
-	private File carpetaSalida;
 	private File ficheroSalida;
 	private ArrayList<File> listaFicherosAProcesar;
+	private JPanel panel = new JPanel();
 	TreeMap<String, Integer> mapaCabecera;
 	ArrayList<TreeMap<String, String>> listaMapasParametroValorPorRegistro;
 	ArrayList<TreeMap<String, LinkedHashMap<String,String>>> listaMapasParametroValorPorRegistro4G;
@@ -43,12 +46,12 @@ public class ProcesaTexto {
 		System.out.println("Leemos configuracion...");
 		File ficheroConfiguracion = new File(sConfiguracion);
 		if (!ficheroConfiguracion.exists()) {
-			System.out.println("No existía el Fichero DE CONFIG!");
 			ficheroConfiguracion = new File(sConfiguracion + ".txt");
 		}
 
 		if (!ficheroConfiguracion.exists()) {
-			throw new ExcepcionEnTrabajo("No existe fichero de configuración: " + sConfiguracion);
+			JOptionPane.showMessageDialog(panel, "No existe fichero de configuración: " + sConfiguracion, "Error", JOptionPane.ERROR_MESSAGE);
+			throw new ExcepcionEnTrabajo();
 		}
 
 		propiedades = new Properties();
@@ -56,7 +59,7 @@ public class ProcesaTexto {
 		try (FileInputStream in = new FileInputStream(ficheroConfiguracion)) {
 			propiedades.load(in);
 		} catch (IOException e) {
-			throw new ExcepcionEnTrabajo("Error en la lectura del fichero de configuracion: " + e.getMessage());
+			JOptionPane.showMessageDialog(panel, "Error en la lectura del fichero de configuracion: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
 		}
 
 		System.out.println("Configuracion leida.");
@@ -66,38 +69,24 @@ public class ProcesaTexto {
 
 		compruebaConfiguracion();
 
-		try {
-
-			if (todosLosFicherosDisponibles()) {
-
-				// descomprimoFicheros();
-
+		if (todosLosFicherosDisponibles()) {
 				procesoFicheros();
-
-				// comprimoFicheros();
-
-				// subirAlFtp();
-
-				// borrarFicheros();
-			}
-			System.out.println("FIN");
-		} catch (ExcepcionEnTrabajo e) {
-			System.out.println("Error en la descarga: " + e.getMessage());
 		}
-
+		System.out.println("FIN");
+		
 	}
 
 	private void compruebaConfiguracion() throws ExcepcionEnTrabajo {
 
 		System.out.println("Comprobamos configuracion...");
 
-		String[] asPropiedadesNecesarias = { LISTA_FICHEROS_NECESARIOS, CARPETA_ORIGEN, FICHERO_SALIDA,
-				MASCARA_FICHERO_SALIDA, };
+		String[] asPropiedadesNecesarias = { FICHERO_ENTRADA, CARPETA_ENTRADA, FICHERO_SALIDA,CARPETA_SALIDA};
 
 		for (String sPropiedadNecesaria : asPropiedadesNecesarias) {
 			if (!propiedades.containsKey(sPropiedadNecesaria)) {
-				throw new ExcepcionEnTrabajo(
-						"Falta parametro '" + sPropiedadNecesaria + "' en el fichero de configuración.");
+				JOptionPane.showMessageDialog(panel,"Falta parametro '" + sPropiedadNecesaria + "' en el fichero de configuración.", "Error", JOptionPane.ERROR_MESSAGE);
+				throw new ExcepcionEnTrabajo();
+				
 			}
 		}
 
@@ -106,13 +95,13 @@ public class ProcesaTexto {
 	}
 
 	private boolean todosLosFicherosDisponibles() throws ExcepcionEnTrabajo {
-		String sCarpetaOrigen = propiedades.getProperty(CARPETA_ORIGEN);
-		String sListaFicherosNecesarios = propiedades.getProperty(LISTA_FICHEROS_NECESARIOS);
+		String sCarpetaOrigen = propiedades.getProperty(CARPETA_ENTRADA);
+		String sListaFicherosNecesarios = propiedades.getProperty(FICHERO_ENTRADA);
 		String[] aListaFicherosNecesarios = UtilidadesTexto.divideTextoEnTokens(sListaFicherosNecesarios, ",");
 		listaFicherosAProcesar = new ArrayList<File>();
 		File carpetaFuenteDatos = new File(sCarpetaOrigen.trim());
 		if (!carpetaFuenteDatos.exists()) {
-			System.out.println("Aun falta la carpeta " + carpetaFuenteDatos.getAbsolutePath());
+			JOptionPane.showMessageDialog(panel, "Aun falta la carpeta " + carpetaFuenteDatos.getAbsolutePath(), "Error", JOptionPane.ERROR_MESSAGE);
 			return false;
 		}
 
@@ -120,7 +109,21 @@ public class ProcesaTexto {
 			sNombreFicheroOrigen = sNombreFicheroOrigen.trim();
 
 			File ficheroEntrada = new File(new File(sCarpetaOrigen), sNombreFicheroOrigen);
-
+			if(ficheroEntrada.getName().contains("2G")){
+				if(ficheroEntrada.length()>20000000){
+					JOptionPane.showMessageDialog(panel, "El fichero " + ficheroEntrada.getName() + " tiene un tamaño mayor de lo habitual, comprobar si es correcto.", "", JOptionPane.INFORMATION_MESSAGE);
+				}
+			}
+			if(ficheroEntrada.getName().contains("3G")){
+				if(ficheroEntrada.length()>55000000){
+					JOptionPane.showMessageDialog(panel, "El fichero " + ficheroEntrada.getName() + " tiene un tamaño mayor de lo habitual, comprobar si es correcto.", "", JOptionPane.INFORMATION_MESSAGE);
+				}
+			}
+			if(ficheroEntrada.getName().contains("4G")){
+				if(ficheroEntrada.length()>14000000){
+					JOptionPane.showMessageDialog(panel, "El fichero " + ficheroEntrada.getName() + " tiene un tamaño mayor de lo habitual, comprobar si es correcto.", "", JOptionPane.INFORMATION_MESSAGE);
+				}
+			}
 			listaFicherosAProcesar.add(ficheroEntrada);
 		}
 
@@ -152,14 +155,26 @@ public class ProcesaTexto {
 
 	}
 
-	private void escribirFichero2G(ArrayList<TreeMap<String, String>> listaMapasParametroValorPorRegistro) {
+	private boolean escribirFichero2G(ArrayList<TreeMap<String, String>> listaMapasParametroValorPorRegistro) {
 
 		ArrayList<String> listaParametrosCabecera = completarListaParametros();
 
 		String sFicheroSalida = propiedades.getProperty(FICHERO_SALIDA);
-		String sCarpetaOrigen = propiedades.getProperty(CARPETA_ORIGEN);
-		ficheroSalida = new File(new File(sCarpetaOrigen), sFicheroSalida);
-		
+		String sCarpetaSalida = propiedades.getProperty(CARPETA_SALIDA);
+		ficheroSalida = new File(new File(sCarpetaSalida), sFicheroSalida);
+		String [] sNombreFichero = UtilidadesTexto.divideTextoEnTokens(ficheroSalida.getName(),".");
+		if((sNombreFichero==null)||(sNombreFichero.length!=2)){
+			JOptionPane.showMessageDialog(panel, "Hay un error con el fichero de salida en el fichero de configuración.", "Error", JOptionPane.ERROR_MESSAGE);
+			return false;
+		}else{
+			if(ficheroSalida.getName().contains("2G")){
+				if(!sNombreFichero[1].equals("cel")){
+					JOptionPane.showMessageDialog(panel, "La extensión del fichero 2G debe ser .cel ", "Error", JOptionPane.ERROR_MESSAGE);
+					return false;
+				}
+			}
+		}
+			
 		try (BufferedWriter bw = new BufferedWriter(new FileWriter(ficheroSalida))) {
 			bw.write("55 TEMS_-_Cell_names \n");
 			for (String sParametro : listaParametrosCabecera) {
@@ -179,18 +194,33 @@ public class ProcesaTexto {
 
 			}
 		} catch (IOException e) {
-			System.out.println("Hay un problema con el fichero de salida");
+			JOptionPane.showMessageDialog(panel, "Hay un problema con el fichero de salida.", "", JOptionPane.ERROR_MESSAGE);
+			return false;
 		}
+		return true;
 
 	}
 	
-	private void escribirFichero3G(ArrayList<TreeMap<String, String>> listaMapasParametroValorPorRegistro) {
+	private boolean escribirFichero3G(ArrayList<TreeMap<String, String>> listaMapasParametroValorPorRegistro) {
 
 		ArrayList<String> listaParametrosCabecera = completarListaParametros();
 		listaParametrosCabecera.add(21,"CELL_TYPE");
 		String sFicheroSalida = propiedades.getProperty(FICHERO_SALIDA);
-		String sCarpetaOrigen = propiedades.getProperty(CARPETA_ORIGEN);
-		ficheroSalida = new File(new File(sCarpetaOrigen), sFicheroSalida);
+		String sCarpetaSalida = propiedades.getProperty(CARPETA_SALIDA);
+		ficheroSalida = new File(new File(sCarpetaSalida), sFicheroSalida);
+		String [] sNombreFichero = UtilidadesTexto.divideTextoEnTokens(ficheroSalida.getName(),".");
+		
+		if((sFicheroSalida==null)||(sNombreFichero.length!=2)){
+			JOptionPane.showMessageDialog(panel, "Hay un error con el fichero de salida en el fichero de configuración.", "Error", JOptionPane.ERROR_MESSAGE);
+			return false;
+		}else{
+			if(ficheroSalida.getName().contains("3G")){
+				if(!sNombreFichero[1].equals("cel")){
+					JOptionPane.showMessageDialog(panel, "La extensión del fichero 3G debe ser .cel ", "Error", JOptionPane.ERROR_MESSAGE);
+					return false;
+				}
+			}
+		}
 		
 		try (BufferedWriter bw = new BufferedWriter(new FileWriter(ficheroSalida))) {
 			bw.write("55 TEMS_-_Cell_names \n");
@@ -211,18 +241,32 @@ public class ProcesaTexto {
 
 			}
 		} catch (IOException e) {
-			System.out.println("Hay un problema con el fichero de salida");
+			JOptionPane.showMessageDialog(panel, "Hay un problema con el fichero de salida.", "", JOptionPane.ERROR_MESSAGE);
+			return false;
 		}
-
+		return true;
 	}
 	
-	private void escribirFichero4G() {
+	private boolean escribirFichero4G() {
 
 		ArrayList<String> listaParametrosCabecera = completarListaParametros4G();
 		
 		String sFicheroSalida = propiedades.getProperty(FICHERO_SALIDA);
-		String sCarpetaOrigen = propiedades.getProperty(CARPETA_ORIGEN);
-		ficheroSalida = new File(new File(sCarpetaOrigen), sFicheroSalida);
+		String sCarpetaSalida = propiedades.getProperty(CARPETA_SALIDA);
+		ficheroSalida = new File(new File(sCarpetaSalida), sFicheroSalida);
+		
+		String [] sNombreFichero = UtilidadesTexto.divideTextoEnTokens(ficheroSalida.getName(),".");
+		if((sNombreFichero==null)||(sNombreFichero.length!=2)){
+			JOptionPane.showMessageDialog(panel, "Hay un error con el fichero de salida en el fichero de configuración.", "Error", JOptionPane.ERROR_MESSAGE);
+			return false;
+		}else{
+			if(ficheroSalida.getName().contains("4G")){
+				if(!sNombreFichero[1].equals("xml")){
+					JOptionPane.showMessageDialog(panel, "La extensión del fichero 4G debe ser .xml ", "Error", JOptionPane.ERROR_MESSAGE);
+					return false;
+				}
+			}
+		}
 		
 		try (BufferedWriter bw = new BufferedWriter(new FileWriter(ficheroSalida))) {
 			bw.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n");
@@ -281,8 +325,10 @@ public class ProcesaTexto {
 			bw.write("</LTE>\r\n");
 			bw.write("</TEMS_CELL_EXPORT>\r\n");
 		} catch (IOException e) {
-			System.out.println("Hay un problema con el fichero de salida");
+			JOptionPane.showMessageDialog(panel, "Hay un problema con el fichero de salida.", "", JOptionPane.ERROR_MESSAGE);
+			return false;
 		}
+		return true;
 
 	}
 
@@ -429,12 +475,12 @@ public class ProcesaTexto {
 				sValoresParametros = br.readLine();
 			}
 		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
+			JOptionPane.showMessageDialog(panel, "Hay un problema con el fichero de entrada.", "", JOptionPane.ERROR_MESSAGE);
 			e.printStackTrace();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		
 
 	}
 	
@@ -559,7 +605,7 @@ public class ProcesaTexto {
 					
 		
 		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
+			JOptionPane.showMessageDialog(panel, "Hay un problema con el fichero de entrada.", "", JOptionPane.ERROR_MESSAGE);
 			e.printStackTrace();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block

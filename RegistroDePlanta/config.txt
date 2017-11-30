@@ -1,5 +1,4 @@
-lista.ficheros.necesarios=2017_11_27_RP_2G.txt
+fichero.entrada=2017_11_27_RP_2G.txt
 fichero.salida=20171120_TME_2G.cel
-lista.carpeta.origen=C:\\Users\\Moises\\Downloads\\Herramienta_Ana\\RegistroPlanta_27112017
-carpeta.resultado=C:\\Users\\Moises\\Downloads\\Herramienta_Ana\\RegistroPlanta_27112017
-mascara.fichero.salida=?YYYYMMdd?_TME_2G_3G_4G.txt
+carpeta.entrada=C:\\Users\\Moises\\Downloads\\Herramienta_Ana\\RegistroPlanta_27112017
+carpeta.salida=C:\\Users\\Moises\\Downloads\\Herramienta_Ana\\RegistroPlanta_27112017
